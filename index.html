@@ -220,6 +220,23 @@ textarea{width:100%;min-height:120px;background:rgba(0,0,0,.3);color:var(--text)
 .ending .keys{text-align:left;font-family:var(--ui);font-size:13px;border-top:1px solid var(--line2);padding-top:10px}
 .recap .sum{font-size:17px;line-height:1.85;margin:6px 0 12px}
 .recap ul{font-size:14.5px;padding-left:1.2em;margin:0 0 14px;color:#cfd8d5}
+.tal .eff{color:var(--teal);font-size:12px}
+.goalbox{border-left:2px solid var(--teal);padding:8px 14px;background:var(--panel);margin:0 0 22px;font-size:15.5px}
+.goalbox .gt2{display:block;font-family:var(--ui);font-size:11px;letter-spacing:.35em;color:var(--teal)}
+.chapter{margin-bottom:30px}
+.chapter h3,.chron-act h3{display:flex;align-items:baseline;gap:12px;margin:0 0 10px;font-weight:400}
+.chapter h3 .n{font-family:var(--ui);font-size:12px;letter-spacing:.4em;color:var(--teal)}
+.chapter h3 .t{font-family:var(--title);font-weight:400;font-size:26px}
+.chapter p{margin:0 0 12px;font-size:16.5px;line-height:2;text-indent:2em;color:#dfe5e3}
+.chron-act h3 .tr{font-family:var(--ui);font-size:12px;color:var(--muted)}
+.rest{border:1px solid var(--line2);background:var(--panel);padding:16px 14px 6px}
+.rest h4{font-family:var(--title);font-weight:400;font-size:28px;margin:0 0 2px;letter-spacing:.08em}
+.rest .sec-sub{margin-bottom:8px}
+.rest .opt{width:100%}
+.subrow{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.subrow button{border:1px solid var(--line2);background:transparent;padding:6px 14px;font-family:var(--ui);font-size:13px;border-radius:2px}
+.subrow button:hover{border-color:var(--teal);background:rgba(31,59,53,.5)}
+.restline{font-family:var(--ui);font-size:13px;color:var(--teal);letter-spacing:.2em;margin:0 0 8px}
 .toast{position:fixed;left:50%;top:calc(14px + env(safe-area-inset-top,0px));transform:translateX(-50%);background:var(--panel2);border:1px solid var(--teal);padding:8px 14px;font-family:var(--ui);font-size:13px;z-index:40}
 </style>
 </head>
@@ -257,10 +274,11 @@ textarea{width:100%;min-height:120px;background:rgba(0,0,0,.3);color:var(--text)
       <p class="sec-sub">你是青萍门的一名弟子。属性一旦定下，就要带着它走完整个江湖。</p>
       <div class="field"><label for="inName">名字</label><input type="text" id="inName" maxlength="8" placeholder="比如：江凛雾"></div>
       <div class="field"><span class="flabel">性别</span><div class="seg" id="segGender"><button data-v="女" class="on">女</button><button data-v="男">男</button></div></div>
+      <div class="field"><span class="flabel">出身 · 你是怎么进的青萍门</span><div class="talents" id="origins"></div></div>
       <div class="field"><span class="flabel">加点 · 每项 3 到 12</span><div class="points" id="points"></div><div class="remain">剩余点数 <b id="remain">30</b></div></div>
       <div class="field"><span class="flabel">天赋 · 选 1 个，第 2 个要扣 5 点</span><div class="talents" id="talents"></div></div>
       <div class="err" id="createErr"></div>
-      <div class="btn-col"><button class="btn primary" id="btnStart" disabled>踏入江湖 <small>第一幕 · 出逃</small></button><button class="btn" id="btnBack">返回</button></div>
+      <div class="btn-col"><button class="btn primary" id="btnStart" disabled>踏入江湖 <small>第一幕 · 下山</small></button><button class="btn" id="btnBack">返回</button></div>
     </div>
   </div>
 </section>
@@ -289,8 +307,9 @@ textarea{width:100%;min-height:120px;background:rgba(0,0,0,.3);color:var(--text)
 (()=>{
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const SAVE_KEY='xuezhao.qingping.save.v1', CFG_KEY='xuezhao.cfg.v1';
+const SAVE_KEY='xuezhao.qingping.save.v2', CFG_KEY='xuezhao.cfg.v1';
 const store={get(k){try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}},del(k){try{localStorage.removeItem(k)}catch(e){}}};
+const TRIAL_LAST_ACT=1;
 
 const ATTRS=[['武力','打不打得过'],['机敏','看不看得穿'],['声望','江湖上有多少人认你'],['健康','能扛多少伤']];
 const TALENTS=[
@@ -302,19 +321,27 @@ const TALENTS=[
  {id:'千杯不醉',d:'酒桌上套话、交朋友的本事，声望涨得快。'},
  {id:'铁骨',d:'健康上限+2，每幕开始回复健康。'}
 ];
+const ORIGINS=[
+ {id:'山门孤儿',d:'还在襁褓里就被老聂在山门口捡回来，青萍门就是你的家。',e:'门主好感 +2'},
+ {id:'镖师遗孤',d:'爹是走镖的，死在一趟镖上。路上的门道，你比谁都懂。',e:'机敏 +1'},
+ {id:'说书人之后',d:'跟着说书的爷爷走南闯北长大。茶馆、渡口是你的地盘。',e:'声望 +1 · 打听更容易'},
+ {id:'天衡弃徒',d:'小时候在天衡剑派学过三年剑，后来被逐出师门。原因，你从不对人说。',e:'武力 +1 · 天衡的人不待见你'}
+];
 const FAVOR_INIT={'门主':5,'师姐':6,'许棠':6,'赵靖之':0};
 const PEOPLE={
- '门主':{full:'聂长风',role:'青萍门门主',rel:'你的门主',desc:'豪爽护短，门里都叫他老聂。看着随性，心里有一本账。'},
- '师姐':{full:'戚红缨',role:'青萍门师姐',rel:'从小罩着你的人',desc:'刀法最好，脾气最烈，最信门主。'},
- '许棠':{full:'许棠',role:'青萍门小师妹',rel:'跟在你身后的小尾巴',desc:'年纪最小，天真，崇拜你。'},
- '赵靖之':{full:'赵靖之',role:'摄政王',rel:'青萍门的恩人',desc:'当朝摄政王，与门主是旧交。'},
- '小满':{full:'小满',role:'来历不明的少年',rel:'你在山脚救下的人',desc:'自称南边人。'},
+ '门主':{full:'聂长歌',role:'青萍门门主',rel:'你的门主',desc:'豪爽护短，爱喝酒，门里都叫她老聂。看着随性，心里有一本账。'},
+ '师姐':{full:'戚红缨',role:'青萍门师姐',rel:'从小罩着你的人',desc:'刀法全门第一，嘴毒护短。上一届武林大会输给了天衡的温辞，憋了五年。'},
+ '许棠':{full:'许棠',role:'青萍门小师妹',rel:'跟在你身后的小尾巴',desc:'第一次下山。嘴甜，贪吃，爱凑热闹，什么都想打听。'},
+ '赵靖之':{full:'赵靖之',role:'摄政王',rel:'青萍门的恩人',desc:'当朝摄政王，与老聂是旧交。头发白了一半，常咳嗽。'},
+ '小满':{full:'小满',role:'来历不明的少年',rel:'路上撞见的人',desc:'自称南边人。'},
  '司徒厉':{full:'司徒厉',role:'摄政王的随从',rel:'',desc:'灰衣白脸，说话很轻。'}
 };
-const ACT_NAMES={1:'出逃',2:'被擒',3:'投奔',4:'摊牌',5:'登基前夜'};
+const ACT_NAMES={1:'下山',2:'武林大会',3:'追杀',4:'天下大变',5:'天亮'};
+const ACT_NODES={1:['来客','点人','托信','路遇','少年','城门']};
 const ACT_IMG={1:'img/gate.jpg',2:'img/cover.jpg',3:'img/yard.jpg',4:'img/cover.jpg',5:'img/yard.jpg'};
 const CN=['零','一','二','三','四','五'];
 const TABS=[['story','卷','剧情'],['chron','录','江湖录'],['people','谱','人物'],['bag','囊','行囊']];
+const CHECK_ATTRS=['武力','机敏','声望','健康','侠气'];
 const stage=v=>v<=2?['疏远','s0']:v<=6?['相识','s1']:v<=9?['信任','s2']:v<=14?['交心','s3']:['生死之交','s4'];
 const enemyStage=v=>v<=0?['尚无','s1']:v<=4?['留意你','s1']:v<=9?['敌视','s0']:['欲除之','s0'];
 
@@ -323,21 +350,26 @@ let cfg=store.get(CFG_KEY)||{key:'',base:'https://api.deepseek.com',model:'deeps
 let storyText='',demo=false,demoIdx=0,busy=false,tab='story';
 
 function newState(c){
-  const s={v:3,name:c.name,gender:c.gender,sect:'青萍门',talents:c.talents,attrs:{...c.attrs},hpMax:c.attrs['健康'],xia:5,expo:0,
+  const s={v:4,name:c.name,gender:c.gender,sect:'青萍门',origin:c.origin||'山门孤儿',talents:c.talents,attrs:{...c.attrs},hpMax:c.attrs['健康'],xia:5,expo:0,
     favor:{...FAVOR_INIT},enemy:{'司徒厉':0},rel:{},flags:{},items:[],clues:[],act:1,node:'',time:'',place:'',goal:'',
-    log:[],chron:[],actSum:{},recent:[],turns:[],options:[],ended:null,uses:{'青萍一线':c.talents.includes('刀心通明')?2:0}};
+    log:[],facts:[],chapters:{},nodesDone:{},eventNow:null,eventsUsed:[],turns:[],options:[],rest:false,restNext:'',trialEnd:false,ended:null,
+    uses:{'青萍一线':c.talents.includes('刀心通明')?2:0}};
   if(s.talents.includes('锋芒毕露')){s.attrs['武力']+=2;s.attrs['声望']+=1}
   if(s.talents.includes('藏锋'))s.attrs['声望']=Math.max(1,s.attrs['声望']-2);
   if(s.talents.includes('铁骨')){s.hpMax+=2;s.attrs['健康']+=2}
   if(s.talents.includes('天生丽质'))for(const k in s.favor)s.favor[k]+=2;
+  if(s.origin==='山门孤儿')s.favor['门主']+=2;
+  if(s.origin==='镖师遗孤')s.attrs['机敏']+=1;
+  if(s.origin==='说书人之后')s.attrs['声望']+=1;
+  if(s.origin==='天衡弃徒')s.attrs['武力']+=1;
   return s;
 }
-function upgrade(s){s.rel=s.rel||{};s.chron=s.chron||[];s.actSum=s.actSum||{};s.goal=s.goal||'';return s}
+function upgrade(s){const d={rel:{},flags:{},items:[],clues:[],log:[],facts:[],chapters:{},nodesDone:{},eventNow:null,eventsUsed:[],turns:[],options:[],rest:false,restNext:'',trialEnd:false,goal:'',origin:'山门孤儿'};for(const k in d)if(s[k]===undefined)s[k]=d[k];return s}
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
-function normFavor(t){return String(t).replace(/好感$/,'').replace('聂长风','门主').replace('戚红缨','师姐').replace('摄政王','赵靖之').replace('李昭','小满')}
+function normFavor(t){return String(t).replace(/好感$/,'').replace('聂长歌','门主').replace('老聂','门主').replace('戚红缨','师姐').replace('摄政王','赵靖之').replace('李昭','小满')}
 function getVal(t){if(!S)return 0;if(t in S.attrs)return S.attrs[t];if(t==='侠气')return S.xia;if(/暴露/.test(t))return S.expo;if(/司徒厉/.test(t))return S.enemy['司徒厉'];const k=normFavor(t);return k in S.favor?S.favor[k]:0}
 function applyChange(c){
-  const t=String(c.target||'').trim(),d=Number(c.delta)||0;if(!t||!d)return null;
+  const t=String(c.target||'').trim(),d=Math.round(Number(c.delta))||0;if(!t||!d)return null;
   if(t==='健康上限'){S.hpMax=clamp(S.hpMax+d,1,30);S.attrs['健康']=clamp(S.attrs['健康'],0,S.hpMax);return{label:t,d}}
   if(t==='健康'){S.attrs['健康']=clamp(S.attrs['健康']+d,0,S.hpMax);return{label:t,d}}
   if(t in S.attrs){S.attrs[t]=clamp(S.attrs[t]+d,1,20);return{label:t,d}}
@@ -347,90 +379,140 @@ function applyChange(c){
   const k=normFavor(t);if(!(k in S.favor))S.favor[k]=0;S.favor[k]=clamp(S.favor[k]+d,0,20);return{label:k+'好感',d};
 }
 const tierOf=d=>d>=3?'大成功':d>=1?'成功':d===0?'勉强':'失败';
+const halfCost=d=>d<0?-Math.max(1,Math.floor(-d/2)):d>0?Math.max(1,Math.floor(d/2)):0;
+function cleanList(a){return (Array.isArray(a)?a:[]).filter(x=>x&&x.target&&Math.round(Number(x.delta))).map(x=>({target:String(x.target),delta:Math.round(Number(x.delta)),why:String(x.why||x.reason||'')}))}
+function normOption(o){
+  if(!o.check||!CHECK_ATTRS.includes(o.check.attr))o.check={attr:'机敏',need:7};
+  o.check.need=Number(o.check.need)||7;
+  o.win=cleanList(o.win);if(!o.win.length)o.win=[{target:'声望',delta:1,why:'事情办成了'}];
+  o.lose=cleanList(o.lose);if(!o.lose.length)o.lose=[{target:'健康',delta:-1,why:'吃了点亏'}];
+  return o;
+}
+function settle(o,tier){
+  let list;
+  if(tier==='失败')list=o.lose.map(x=>({...x}));
+  else{
+    list=o.win.map(x=>({...x}));
+    if(tier==='大成功'){const p=list.find(x=>x.delta>0);if(p){p.delta+=1;p.why=(p.why?p.why+'，':'')+'干得漂亮'}else list.push({target:'声望',delta:1,why:'干得漂亮'})}
+    if(tier==='勉强')o.lose.forEach(x=>list.push({...x,delta:halfCost(x.delta),why:(x.why||'代价')+'（勉强过关）'}));
+  }
+  const m=[];list.forEach(x=>{const k=normFavor(x.target),e=m.find(y=>normFavor(y.target)===k);if(e){e.delta+=x.delta;e.why=e.why+'，可'+String(x.why).replace('（勉强过关）','')}else m.push({...x})});
+  let fin=m.filter(x=>x.delta);if(!fin.length){const w=o.win[0];fin=[{target:w.target,delta:w.delta>0?1:w.delta,why:(w.why||'')+'（勉强过关）'}]}
+  const res=[];fin.forEach(x=>{const r=applyChange(x);if(r)res.push({...r,reason:x.why})});return res;
+}
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+function prepOptions(arr){const o=(Array.isArray(arr)?arr:[]).slice(0,4).map(x=>normOption({...x,text:String(x.text||'').replace(/^[A-DＡ-Ｄ][.、．:：\s]+/,'')}));shuffle(o);o.forEach((x,i)=>x.key='ABCD'[i]);return o}
 function lockInfo(o){if(!o.require||!o.require.target)return null;const cur=getVal(o.require.target),min=Number(o.require.min)||0;return cur<min?{t:o.require.target,min,cur}:null}
 const alias=()=>S&&S.flags&&S.flags['名号']?String(S.flags['名号']):'';
+const lastPlayTurn=()=>{for(let i=S.turns.length-1;i>=0;i--)if(!S.turns[i].rest)return S.turns[i];return null};
+const actCount=a=>S.turns.filter(t=>!t.rest&&t.act===a).length;
 
 const PROTOCOL=`
 【网页版输出协议 · 优先级最高】
-本次游戏运行在网页里。忽略设定文件第六、第七部分的聊天输出格式（不要输出状态栏、LaTeX 面板、ABCD 文本、存档文本）。开局建人物已经由网页完成，直接从第一幕第一个节点开始讲。
-你每次只输出一个 json 对象，不要输出任何别的文字：
+建人物已经由网页完成。你每次只输出一个 json 对象，不要输出任何别的文字：
 {
  "scene":{"act":1,"node":"来客","time":"入秋 · 酉时","place":"青萍山 · 正堂"},
  "story":["一段剧情","赵靖之：人物说话单独一段，用「名字：话」的格式"],
- "changes":[{"target":"赵靖之","delta":2,"reason":"觉得你爽快，懂礼数"}],
- "flags":{"交情":"深","名号":"青萍小刀"},
- "items_add":[],"items_remove":[],"clues_add":["云纹针"],
- "relations":{"小满":"你在山脚救下的少年，自称南边人，说话却带京城口音。"},
- "goal":"玩家此刻的目标，一句话",
+ "changes":[],
+ "flags":{"交情":"深"},
+ "items_add":[],"items_remove":[],"clues_add":[],
+ "facts_add":["主线上新发生或新得知的事，一条一句"],
+ "node_done":[],
+ "event":null,
+ "relations":{"小满":"你在林子里撞见的少年，自称南边人，说话却带京城口音。"},
+ "goal":"玩家此刻的目标，一句话，要具体",
  "prompt":"下一件需要玩家决定的事，一两句",
- "options":[{"key":"A","text":"拔刀，挡在他前面","check":{"attr":"武力","need":8}},{"key":"B","text":"……","require":{"target":"师姐","min":8}},{"key":"C","text":"……"},{"key":"D","text":"……"}],
- "note":"一句话记下本回合发生了什么、玩家做了什么关键选择",
- "act_end":false,"act_summary":"",
+ "options":[
+  {"text":"拔刀，挡在他前面","check":{"attr":"武力","need":8},"win":[{"target":"小满","delta":3,"why":"你替他挡了刀"}],"lose":[{"target":"健康","delta":-2,"why":"被暗器划伤"}]},
+  {"text":"……","check":{"attr":"机敏","need":7},"win":[……],"lose":[……],"require":{"target":"师姐","min":8}}
+ ],
+ "note":"一句话记下本回合发生了什么",
+ "act_end":false,
+ "chapter":"",
  "ending":null
 }
 规则：
-1. 数值由网页维护。changes 只写增减和理由，target 只能是：武力、机敏、声望、健康、健康上限、侠气、暴露、门主、师姐、许棠、赵靖之、小满、司徒厉敌意。第一次与小满相识时，给小满写一条 changes。
-2. 检定由网页计算。需要检定的选项写 check:{"attr":属性,"need":门槛}，有加成时加 "bonus":数字,"bonus_source":"来源"。玩家选了带检定的选项后，输入里会给出「检定结果」，你必须严格按结果写剧情和代价，不得改判。
-3. 有数值门槛的选项写 require:{"target":名称,"min":数值}，照样列出，网页会判断能否选择。
-4. 持有「刀心通明」且绝招有剩余时，危急关头可提供 "special":"青萍一线" 的选项，网页判为大成功。
-5. 每次给 4 个选项，四种活法，有得有失，没有标准答案。结局时 options 为空数组。
-6. story 2～5 段，每段不超过 80 字，人物说话单独成段。
-7. relations：玩家对某人的认识有了新变化，就更新这个人的一两句描述。只写玩家已经知道的，【机密】在揭开前不得写进去。新登场的重要人物也可以加进来。
-8. goal：每回合都给出玩家当前的目标。
-9. 获得名号时写进 flags 的「名号」。
-10. 每一幕最后一个节点结束时 act_end 为 true，act_summary 用两三句话总结本幕。
-11. 结局时 ending 写成 {"type":"结局"或"中断","title":"风起青萍","text":"6到12句尾声","turning_point":"中断时写从哪个节点拐弯","keys":["决定结局的关键选择"]}。
-12. 输入里的「当前状态」由网页记录，完全准确；「已发生记录」是之前每回合的摘要，必须与它保持一致，不得遗忘或矛盾。
+1. 数值全部由网页结算。每个选项都必须同时写 check、win、lose。win 是成功时得到的，lose 是失败时付出的，各至少一条，而且必须跟这个选项做的事直接相关。幅度：属性 ±1（极少 ±2），好感 ±1～3，健康 −1～−3，暴露 +1～+2，侠气 ±1。target 只能是：武力、机敏、声望、健康、健康上限、侠气、暴露、门主、师姐、许棠、赵靖之、小满、司徒厉敌意。check.attr 只能是：武力、机敏、声望、健康、侠气。门槛参考：普通 7，困难 9，极难 12。
+2. 网页按检定结果结算：大成功＝win 再多一点；成功＝win；勉强＝win 加一半 lose；失败＝lose。输入的「检定结果」里写明了结果和网页已经结算的数值。你写剧情必须体现这个结果，并让每一项数值变化在剧情里有原因。不得改判，不要在 changes 里重复这些数值。
+3. changes 只用于剧本里写明的固定变化（例如没打出大成功时中云纹针，健康 −1），其他情况一律为空数组。
+4. 四个选项是四种不同的做法，按眼前的事来写，不要套固定模板，不要按固定顺序排（网页会打乱顺序），选项文字里不要写 A、B、C、D。最稳妥的选项不一定代价最小，看着冒失的选项不一定会失败，不能让玩家一眼看出哪个最好。
+5. 有数值门槛的选项写 require:{"target":名称,"min":数值}，照样列出，网页会判断能否选择。
+6. 持有「刀心通明」且绝招有剩余时，危急关头可提供带 "special":"青萍一线" 的选项，网页判为大成功。
+7. story 2～5 段，每段不超过 80 字，人物说话单独成段。第一段必须接上一轮最后的画面和玩家的选择。
+8. facts_add 是主线账本：只记主线上发生的事、得知的事、拿到的重要东西（例如「老聂交给你一封封了蜡的信，让你大会后送去京城交给王爷」）。小事件、闲聊不记。网页会永久保存，每一轮都会原样给你，你必须与它保持一致，不得遗忘或矛盾。
+9. node_done：一个关键节点演完的那一轮，把节点名写进去（因条件跳过的节点也写）。输入里会告诉你本幕节点的顺序、已完成的和下一个。你只能演「下一个」节点，或者小事件池里的事。
+10. event：从小事件池开始一件小事件时写 {"name":"池里的名字","status":"进行中"}，收尾那一轮写 {"name":"同一个名字","status":"结束"}，其余时候写 null。输入里会告诉你进行中的和已用过的。进行中的小事件到了它写明的轮数必须收尾。用过的不能再用。
+11. relations：玩家对某人的认识有了新变化，就更新这个人的一两句描述。只写玩家已经知道的，【机密】不得写进去。
+12. goal 每一轮都要写，写玩家眼下要做的具体的事。
+13. 获得名号时写进 flags 的「名号」。同行者确定时写进 flags 的「同行」。
+14. 本幕最后一个节点演完的那一轮：act_end 为 true，options 为空数组（网页会接「歇脚」），并写 chapter。
+15. chapter 是江湖录里本幕的一章，写成小说：400～700 字，第二人称「你」，只写主线，不写小事件、不写数值，分 3～6 段（段与段之间用换行），结尾停在本幕玩家明白的那件事上。
+16. 结局时 ending 写成 {"type":"结局"或"中断","title":"标题","text":"6到12句尾声","turning_point":"中断时写从哪个节点拐弯","keys":["决定结局的关键选择"]}，options 为空数组。
+17. 输入里的「本幕进度」由网页统计，必须遵守。本幕不足 8 回合时 act_end 必须为 false。节点演完而回合不够时，只能从小事件池里挑小事件，不许自己编。一个节点可以用两三回合演完，不要一回合跳过一个节点。
+18. 输入里如果有「歇脚打听」，本回合开头先给玩家一条与主线有关的坊间传闻，写进 facts_add。
 `;
 
 const DEMO=[
- {scene:{act:1,node:'来客',time:'入秋 · 酉时',place:'青萍山 · 正堂'},goal:'把这顿酒喝好，别给门主丢脸',
-  story:['入秋第三天，山门口停了一辆青布马车。下车的人五十出头，头发白了一半，只带一个灰衣随从。','是摄政王赵靖之。','门主聂长风破天荒换了身干净衣裳，在正堂摆了酒。酒过三巡，赵靖之放下杯子，看向你们这一桌。','门主：这个最能喝。去，给王爷敬一杯。'],
-  relations:{'赵靖之':'当朝摄政王，亲自上了青萍山。比传闻里和气，头发白了一半。','司徒厉':'王爷身后的灰衣随从，从进门起一口菜都没动。'},
-  changes:[],prompt:'满堂的人都看着你。灰衣随从站在王爷身后，一直没动筷子。',
-  options:[{key:'A',text:'大大方方敬酒，说句场面话'},{key:'B',text:'敬完酒，顺口问王爷亲自上山是丢了什么'},{key:'C',text:'一口闷了，空碗倒扣在桌上，江湖规矩'},{key:'D',text:'先敬王爷身后那位一直没动筷子的随从',check:{attr:'机敏',need:7}}],
-  note:'赵靖之上青萍山，门主让你敬酒'},
- {scene:{act:1,node:'来客',time:'入秋 · 三更',place:'青萍山 · 后院'},goal:'天亮前把司徒厉的马找回来',
-  story:['赵靖之笑着喝干了那杯，转头对门主说："聂兄，你这徒弟比你会说话。"','门主哼了一声，嘴角却是翘的。','三更天，你刚躺下，许棠一头撞进门，脸都白了。','许棠：师姐！我去马厩喂马，把司徒大人那匹黑马给放跑了！'],
-  changes:[{target:'赵靖之',delta:2,reason:'觉得你爽快，懂礼数'},{target:'门主',delta:1,reason:'给他长了脸'}],
-  prompt:'那是王爷随从的马。天亮之前找不回来，许棠要挨罚。',
-  options:[{key:'A',text:'拉上她，连夜下山去追'},{key:'B',text:'让她自己去找司徒厉认错'},{key:'C',text:'"就说是我放的。"'},{key:'D',text:'去敲师姐的门，让她拿主意',require:{target:'师姐',min:9}}],
-  note:'敬酒得体；许棠放跑了司徒厉的马'},
- {scene:{act:1,node:'路遇',time:'入秋 · 四更',place:'青萍山 · 山脚林道'},goal:'眼前这个少年，救还是不救',
-  story:['马找着了。一个十六七岁的少年正死死扒在马背上，被那黑马颠得东倒西歪。','林子里追出来四个黑衣人，手一扬，几点寒光钉在马蹄边。','黑衣人：朝廷捉拿要犯！闲人让开，交出来赏银五十两！','许棠躲到你身后。少年从马背上摔下来，抬头看了你一眼，没有求你。'],
-  changes:[{target:'许棠',delta:2,reason:'你没让她一个人扛'}],
-  prompt:'四个人，暗器，你身后还有个吓坏了的许棠。',
-  options:[{key:'A',text:'拔刀，挡在他前面',check:{attr:'武力',need:8}},{key:'B',text:'救下他，带回山上交给门主处置',check:{attr:'武力',need:8,bonus:-1,bonus_source:'还要护着许棠'}},{key:'C',text:'牵上马就走，这不关你们的事'},{key:'D',text:'把他交出去，五十两够许棠赔马了'}],
-  note:'追马时撞见少年被黑衣人追杀'},
- {scene:{act:1,node:'路遇',time:'入秋 · 四更',place:'青萍山 · 山脚林道'},goal:'演示到此为止',
-  story:['刀出鞘的声音在夜里很脆。','你抢身贴进去，一刀劈翻最左边那个，回身又砍伤了第二个的手腕。剩下两个拖着同伴退进了林子。','你左肩一凉，低头才看见一枚细针钉在肉里，针尾刻着一圈云纹。','少年：多谢。我叫小满。'],
-  relations:{'小满':'你在山脚救下的少年，自称南边人，说话却带着京城口音。'},
-  changes:[{target:'健康',delta:-2,reason:'左肩中了一枚云纹针'},{target:'侠气',delta:1,reason:'你为一个陌生人拔了刀'},{target:'小满',delta:3,reason:'你替他挨了一针'}],
-  clues_add:['云纹针'],flags:{'交情':'深'},
-  prompt:'演示到这里结束。填上你自己的 DeepSeek Key，就能从头走完整个江湖。',
-  options:[],note:'你拔刀救下少年，左肩中了云纹针。他说他叫小满'}
+ {scene:{act:1,node:'来客',time:'入秋 · 酉时',place:'青萍山 · 正堂'},goal:'把这顿酒端好，别给老聂丢脸',
+  story:['入秋，山门口停了一辆青布马车。下车的人五十出头，头发白了一半，只带了一个灰衣随从。','是摄政王赵靖之，老聂的旧交。','老聂破天荒换了身干净衣裳，在正堂摆了酒。端酒的活，落到了你这个排行靠后的弟子头上。','老聂：愣着干什么，给王爷满上。'],
+  facts_add:['摄政王赵靖之轻车简从上青萍山拜访老聂，只带了一个灰衣随从'],
+  relations:{'赵靖之':'当朝摄政王，老聂的旧交。比传闻里和气，头发白了一半。','司徒厉':'王爷身后的灰衣随从，从进门起一口菜都没动。'},
+  prompt:'你捧着酒壶走到主桌前。灰衣随从站在王爷身后，一动不动。',
+  options:[
+   {text:'规规矩矩斟酒，一句话不多说',check:{attr:'机敏',need:6},win:[{target:'门主',delta:1,why:'懂规矩，没给她丢脸'}],lose:[{target:'门主',delta:-1,why:'手一抖，酒洒在了王爷袖子上'}]},
+   {text:'斟完酒，顺口讲一句山上的趣事',check:{attr:'声望',need:8},win:[{target:'赵靖之',delta:2,why:'王爷笑出了声'}],lose:[{target:'门主',delta:-1,why:'满堂冷场，老聂瞪了你一眼'}]},
+   {text:'给王爷斟完，也给那位随从斟一杯',check:{attr:'机敏',need:8},win:[{target:'赵靖之',delta:1,why:'觉得你周到'}],lose:[{target:'司徒厉敌意',delta:1,why:'他不喜欢被人注意到'}]},
+   {text:'斟酒的时候，偷偷打量那个随从',check:{attr:'机敏',need:9},win:[{target:'机敏',delta:1,why:'你看出他的手从没离开过袖口'}],lose:[{target:'司徒厉敌意',delta:1,why:'他察觉到你在看他'}]}
+  ],note:'赵靖之上青萍山，你在席上斟酒'},
+ {scene:{act:1,node:'来客',time:'入秋 · 三更',place:'青萍山 · 廊下'},goal:'今晚早点歇下，明早还有早课',
+  story:['赵靖之接过酒杯，问你叫什么、入门几年。你答了，他点点头，说二十年前来过一回，那时候老聂酿的酒比现在烈。','他说完咳了两声。老聂笑骂了一句，眼睛却往王爷身后瞟了一下，又瞟了一下。','散席后，正堂的门关上了。窗纸上两个影子，一直坐到三更。','许棠：师兄师姐们都睡了，就咱俩还醒着。你说王爷大老远来，就为了喝顿酒？'],
+  node_done:['来客'],facts_add:['散席后老聂和赵靖之关门谈到三更，谈了什么没人知道'],
+  prompt:'许棠蹲在廊下，眼睛亮晶晶地看着你。远处师姐屋里的灯也还亮着。',
+  options:[
+   {text:'陪许棠蹲一会儿，给她讲王爷长什么样',check:{attr:'机敏',need:6},win:[{target:'许棠',delta:2,why:'她听得津津有味'}],lose:[{target:'健康',delta:-1,why:'夜风太凉，第二天打了一早上喷嚏'}]},
+   {text:'去敲师姐的门，陪她喝两口',check:{attr:'声望',need:7},win:[{target:'师姐',delta:2,why:'她难得跟你说了句软话'}],lose:[{target:'师姐',delta:-1,why:'被她骂了一顿“大半夜的不睡觉”'}]},
+   {text:'绕到正堂窗下，听听他们在谈什么',check:{attr:'机敏',need:10},win:[{target:'机敏',delta:1,why:'你听见老聂说了一句“我替你留意”'}],lose:[{target:'门主',delta:-2,why:'被老聂抓了个正着'},{target:'暴露',delta:1,why:'有人看见你在窗下'}]},
+   {text:'回屋把刀磨了，明早还有早课',check:{attr:'武力',need:6},win:[{target:'武力',delta:1,why:'刀磨得飞快，手也稳了'}],lose:[{target:'许棠',delta:-1,why:'她觉得你不搭理她'}]}
+  ],note:'散席后老聂与赵靖之密谈到三更'},
+ {scene:{act:1,node:'点人',time:'次日 · 辰时',place:'青萍山 · 演武场'},goal:'跟着师姐，去云渡城赴武林大会',
+  story:['第二天一早，青布马车已经下山了。','老聂站在演武场边上，宣布五年一回的武林大会今年在云渡城，青萍门派小辈去。','老聂：红缨去。还有你，也去，见见世面。','许棠一把攥住了你的袖子。'],
+  node_done:['点人'],facts_add:['武林大会今年在云渡城办，老聂派师姐和你去'],
+  prompt:'许棠也想去，可老聂没点她的名。她眼巴巴地看着你。',
+  options:[
+   {text:'替许棠跟老聂求个情',check:{attr:'声望',need:8},win:[{target:'许棠',delta:3,why:'你替她说了话'}],lose:[{target:'门主',delta:-1,why:'老聂嫌你多嘴'}]},
+   {text:'跟许棠说“下回吧”',check:{attr:'机敏',need:6},win:[{target:'门主',delta:1,why:'你没给老聂添乱'}],lose:[{target:'许棠',delta:-2,why:'她一整天没理你'}]},
+   {text:'去问师姐要不要一路走',check:{attr:'声望',need:7},win:[{target:'师姐',delta:2,why:'她嘴上嫌弃，还是点了头'}],lose:[{target:'师姐',delta:-1,why:'她说“谁要跟你一路”'}]},
+   {text:'什么都不说，回去收拾行李',check:{attr:'武力',need:5},win:[{target:'健康',delta:1,why:'早早歇下，养足了精神'}],lose:[{target:'许棠',delta:-1,why:'她觉得你不够意思'}]}
+  ],note:'老聂点你和师姐去武林大会'},
+ {scene:{act:1,node:'托信',time:'出发前夜 · 二更',place:'青萍山 · 后山'},goal:'大会完了，把信送到京城',
+  story:['出发前夜，老聂把你叫到后山。','她从怀里摸出一封信，封着青萍门的蜡，塞进你手里。','老聂：别拆。大会完了，往京城走一趟，亲手交到王爷手上。别让任何人看见，包括你师姐。','你还想问，她已经转身走了。'],
+  node_done:['托信'],items_add:['老聂的信（封蜡）'],facts_add:['出发前夜，老聂交给你一封封了蜡的信，嘱咐别拆，大会后送去京城亲手交给王爷，谁也别让看见'],
+  prompt:'演示到这里结束。填上你自己的 DeepSeek Key，就能从头走下去。',
+  options:[],note:'老聂托你送信'}
 ];
 
 /* 封面 / 建人物 */
 function show(id){for(const s of ['cover','create','game'])$('#'+s).hidden=(s!==id);window.scrollTo(0,0)}
-function refreshCover(){$('#keyState').textContent=cfg.key?'已设置':'未设置';const sv=store.get(SAVE_KEY);if(sv&&!sv.ended){$('#btnContinue').hidden=false;$('#contInfo').textContent=`${sv.name} · 第${CN[sv.act]||sv.act}幕`}else $('#btnContinue').hidden=true}
+function refreshCover(){$('#keyState').textContent=cfg.key?'已设置':'未设置';const sv=store.get(SAVE_KEY);if(sv&&!sv.ended){$('#btnContinue').hidden=false;$('#contInfo').textContent=`${sv.name} · 第${CN[sv.act]||sv.act}幕${sv.trialEnd?' · 试玩已结束':''}`}else $('#btnContinue').hidden=true}
 $('#btnNew').onclick=()=>{demo=false;openCreate()};
-$('#btnDemo').onclick=()=>{demo=true;demoIdx=0;S=newState({name:'江凛雾',gender:'女',talents:['刀心通明'],attrs:{'武力':8,'机敏':8,'声望':7,'健康':7}});enterGame()};
+$('#btnDemo').onclick=()=>{demo=true;demoIdx=0;S=newState({name:'江凛雾',gender:'女',origin:'山门孤儿',talents:['刀心通明'],attrs:{'武力':8,'机敏':8,'声望':7,'健康':7}});enterGame()};
 $('#btnContinue').onclick=()=>{demo=false;const s=store.get(SAVE_KEY);if(!s)return;S=upgrade(s);enterGame(true)};
 $('#btnCfg').onclick=()=>openCfg();
-let C={name:'',gender:'女',attrs:{'武力':7,'机敏':8,'声望':7,'健康':8},talents:[]};
+let C={name:'',gender:'女',attrs:{'武力':7,'机敏':8,'声望':7,'健康':8},talents:[],origin:''};
 const budget=()=>C.talents.length>=2?25:30;
 function openCreate(){show('create');renderCreate()}
 function renderCreate(){
   $('#points').innerHTML=ATTRS.map(([k,d])=>`<div class="prow"><div class="nm">${k}</div><div class="desc">${d}</div><div class="stepper"><button data-a="${k}" data-d="-1" aria-label="${k}减一">−</button><span>${C.attrs[k]}</span><button data-a="${k}" data-d="1" aria-label="${k}加一">+</button></div></div>`).join('');
   const rem=budget()-Object.values(C.attrs).reduce((a,b)=>a+b,0);$('#remain').textContent=rem;
+  $('#origins').innerHTML=ORIGINS.map(o=>`<button class="tal ${C.origin===o.id?'on':''}" data-o="${o.id}"><b>${o.id}</b><span>${o.d}</span><span class="eff">${o.e}</span></button>`).join('');
   $('#talents').innerHTML=TALENTS.map(t=>{const on=C.talents.includes(t.id);const bl=!on&&(C.talents.length>=2||(t.x&&C.talents.includes(t.x)));return `<button class="tal ${on?'on':''} ${bl?'off':''}" data-t="${t.id}" ${bl?'disabled':''}><b>${t.id}</b><span>${t.d}</span></button>`}).join('');
-  let err='';if(!C.name.trim())err='写下你的名字。';else if(rem!==0)err=rem>0?`还有 ${rem} 点没分完。`:`多分了 ${-rem} 点，请减掉。`;else if(!C.talents.length)err='挑一个天赋。';
+  let err='';if(!C.name.trim())err='写下你的名字。';else if(!C.origin)err='选一个出身。';else if(rem!==0)err=rem>0?`还有 ${rem} 点没分完。`:`多分了 ${-rem} 点，请减掉。`;else if(!C.talents.length)err='挑一个天赋。';
   $('#createErr').textContent=err;$('#btnStart').disabled=!!err;
 }
 $('#inName').oninput=e=>{C.name=e.target.value;renderCreate()};
 $('#segGender').onclick=e=>{const b=e.target.closest('button');if(!b)return;C.gender=b.dataset.v;[...$('#segGender').children].forEach(x=>x.classList.toggle('on',x===b))};
 $('#points').onclick=e=>{const b=e.target.closest('button');if(!b)return;const k=b.dataset.a;C.attrs[k]=clamp(C.attrs[k]+Number(b.dataset.d),3,12);renderCreate()};
+$('#origins').onclick=e=>{const b=e.target.closest('button');if(!b)return;C.origin=b.dataset.o;renderCreate()};
 $('#talents').onclick=e=>{const b=e.target.closest('button');if(!b)return;const id=b.dataset.t;C.talents=C.talents.includes(id)?C.talents.filter(x=>x!==id):[...C.talents,id];renderCreate()};
 $('#btnBack').onclick=()=>{show('cover');refreshCover()};
 $('#btnStart').onclick=()=>{if(!cfg.key){openCfg(true);return}S=newState(C);store.set(SAVE_KEY,S);enterGame()};
@@ -444,7 +526,7 @@ for(const n of ['#tabsTop','#tabsBottom'])$(n).onclick=e=>{const b=e.target.clos
 function enterGame(resume){
   show('game');tab='story';renderTabs();setTab('story');renderTop();renderSide();
   const st=$('#story');st.innerHTML='';
-  if(resume&&S.turns.length){S.turns.forEach(t=>st.appendChild(turnEl(t)));renderOptions();recap();return}
+  if(resume&&S.turns.length){S.turns.forEach(t=>st.appendChild(turnEl(t)));renderOptions();if(!S.trialEnd)recap();return}
   ask({type:'start'});
 }
 function renderTop(){
@@ -454,86 +536,151 @@ function renderTop(){
 }
 function paraEl(p){const m=String(p).match(/^([^：:\s]{1,6})[：:]([\s\S]+)$/);if(m)return `<div class="say"><span class="who">${esc(m[1])}</span><span class="w">${esc(m[2].trim())}</span></div>`;return `<p class="para">${esc(p)}</p>`}
 const TCLS={'大成功':'t-big','成功':'t-ok','勉强':'t-mid','失败':'t-fail'};
+function changesEl(list){return list&&list.length?`<div class="changes">${list.map(c=>`<div class="${c.d>0?'up':'dn'}"><b>${esc(c.label)} ${c.d>0?'+':''}${c.d}</b><i>${c.reason?esc(c.reason):''}</i></div>`).join('')}</div>`:''}
 function turnEl(t){
   const d=document.createElement('div');d.className='turn';let h='';
+  if(t.rest){h+=`<div class="restline">歇脚 · ${esc(t.label)}</div>${changesEl(t.changes)}${t.note?`<p class="note">${esc(t.note)}</p>`:''}`;d.innerHTML=h;return d}
   if(t.actStart)h+=`<div class="act-banner"><img src="${ACT_IMG[t.actStart]||ACT_IMG[1]}" alt=""><div class="ov"><div class="n">第${CN[t.actStart]||t.actStart}幕</div><div class="t">${esc(ACT_NAMES[t.actStart]||'')}</div></div></div>`;
   if(t.choice)h+=`<div class="mychoice"><span>${esc(t.choice)}</span></div>`;
   if(t.check){const c=t.check;h+=`<span class="stamp ${TCLS[c.tier]}"><em>${esc(c.tier)}</em>${esc(c.attr)} ${c.value}${c.bonus?`${c.bonus>0?'+':''}${c.bonus}`:''} / 需 ${c.need}${c.src?`<small>${esc(c.src)}</small>`:''}</span>`}
   h+=(t.story||[]).map(paraEl).join('');
-  if(t.changes&&t.changes.length)h+=`<div class="changes">${t.changes.map(c=>`<div class="${c.d>0?'up':'dn'}"><b>${esc(c.label)} ${c.d>0?'+':''}${c.d}</b><i>${c.reason?esc(c.reason):''}</i></div>`).join('')}</div>`;
-  if(t.actSummary)h+=`<div class="changes"><div class="sum"><b>第${CN[t.act]||t.act}幕 · 终</b><i>${esc(t.actSummary)}</i></div></div>`;
+  h+=changesEl(t.changes);
+  if(t.actEnd)h+=`<div class="changes"><div class="sum"><b>第${CN[t.act]||t.act}幕 · 终</b><i>江湖录里添了新的一章</i></div></div>`;
   if(t.prompt)h+=`<div class="prompt">${esc(t.prompt)}</div>`;
   d.innerHTML=h;return d;
 }
 function renderOptions(){
-  const old=$('#opts');if(old)old.remove();if(S.ended){showEnding(S.ended);return}
+  const old=$('#opts');if(old)old.remove();
+  if(S.ended){showEnding(S.ended);return}
+  if(S.trialEnd){const w=document.createElement('div');w.id='opts';w.className='btn-col';w.innerHTML=`<p class="note" style="color:var(--teal)">第一幕试玩到此结束。</p><button class="btn primary" id="tChron">翻看江湖录</button><button class="btn" id="tHome">回封面</button>`;$('#story').appendChild(w);$('#tChron').onclick=()=>setTab('chron');$('#tHome').onclick=()=>{show('cover');refreshCover()};return}
+  if(S.rest){renderRest();return}
   if(!S.options||!S.options.length){if(demo){const w=document.createElement('div');w.id='opts';w.className='btn-col';w.innerHTML=`<button class="btn primary" id="dGo">去设置 Key，开始真正的江湖</button><button class="btn" id="dHome">回封面</button>`;$('#story').appendChild(w);$('#dGo').onclick=()=>{show('cover');refreshCover();openCfg()};$('#dHome').onclick=()=>{show('cover');refreshCover()}}return}
   const w=document.createElement('div');w.id='opts';w.className='opts';
-  S.options.forEach((o,i)=>{const L=lockInfo(o),b=document.createElement('button');b.className='opt';let extra='';
+  S.options.forEach(o=>{const L=lockInfo(o),b=document.createElement('button');b.className='opt';let extra='';
     if(L){b.disabled=true;extra=`<span class="lock">需 ${esc(L.t)} ≥ ${L.min}，当前 ${L.cur}，无法选择</span>`}
     if(o.special==='青萍一线'){if(!(S.uses['青萍一线']>0)){b.disabled=true;extra='<span class="lock">绝招已用尽</span>'}else extra=`<span class="hint">绝招 · 剩余 ${S.uses['青萍一线']} 次</span>`}
-    b.innerHTML=`<span class="k">${esc(o.key||'ABCD'[i])}</span><span class="tx">${esc(o.text)}${extra}</span>`;b.onclick=()=>choose(o);w.appendChild(b)});
+    b.innerHTML=`<span class="k">${esc(o.key)}</span><span class="tx">${esc(o.text)}${extra}</span>`;b.onclick=()=>choose(o);w.appendChild(b)});
   $('#story').appendChild(w);
 }
-function choose(o){
-  if(busy)return;let check=null;
-  if(o.special==='青萍一线'&&S.uses['青萍一线']>0){S.uses['青萍一线']--;check={attr:'武力',value:getVal('武力'),need:'—',tier:'大成功',src:'青萍一线'}}
-  else if(o.check&&o.check.attr){const base=getVal(o.check.attr),bonus=Number(o.check.bonus)||0,need=Number(o.check.need)||7;check={attr:o.check.attr,value:base,bonus,src:o.check.bonus_source||'',need,tier:tierOf(base+bonus-need)}}
-  S.options=[];renderOptions();ask({type:'choice',choice:`${o.key||''}. ${o.text}`,check});
+function companions(){const g=String(S.flags['同行']||'');const all=['师姐','许棠'].filter(k=>!g||g.includes(k)||(k==='师姐'&&g.includes('戚红缨')));if(S.favor['小满']>0||S.rel['小满'])all.push('小满');return all.length?all:['师姐','许棠']}
+function renderRest(){
+  const w=document.createElement('div');w.id='opts';w.className='rest';
+  const ppl=companions();
+  w.innerHTML=`<h4>歇脚</h4><p class="sec-sub">一幕走完，歇一歇。四件事只能做一件。</p>
+   <button class="opt" data-r="养伤"><span class="k">伤</span><span class="tx">养伤<span class="hint">健康回满（现在 ${S.attrs['健康']}/${S.hpMax}）</span></span></button>
+   <div class="opt" style="cursor:default"><span class="k">功</span><span class="tx">练功<span class="hint">选一项属性 +1</span><span class="subrow">${['武力','机敏','声望'].map(a=>`<button data-r="练功" data-s="${a}">${a}</button>`).join('')}</span></span></div>
+   <div class="opt" style="cursor:default"><span class="k">走</span><span class="tx">走动<span class="hint">去找一个人，好感 +2</span><span class="subrow">${ppl.map(p=>`<button data-r="走动" data-s="${p}">${esc((PEOPLE[p]||{full:p}).full)}</button>`).join('')}</span></span></div>
+   <button class="opt" data-r="打听"><span class="k">听</span><span class="tx">打听<span class="hint">下一幕开头，听到一条和主线有关的传闻</span></span></button>`;
+  w.onclick=e=>{const b=e.target.closest('[data-r]');if(!b||b.tagName!=='BUTTON')return;doRest(b.dataset.r,b.dataset.s)};
+  $('#story').appendChild(w);
 }
-function stateForAI(){return{名字:S.name,性别:S.gender,门派:S.sect,天赋:S.talents,属性:{...S.attrs,健康上限:S.hpMax,侠气:S.xia,暴露:S.expo},好感:S.favor,敌意:S.enemy,标记:S.flags,物品:S.items,线索:S.clues,玩家对人物的认识:S.rel,当前幕:S.act,当前节点:S.node,绝招剩余:S.uses}}
+function doRest(kind,sub){
+  if(busy)return;let ch=[],label=kind,note='';
+  if(kind==='养伤'){const b=S.attrs['健康'];S.attrs['健康']=S.hpMax;if(S.hpMax-b)ch.push({label:'健康',d:S.hpMax-b,reason:'好好睡了几觉，伤都收了口'});else note='身上没伤，睡了个好觉。'}
+  if(kind==='练功'){const r=applyChange({target:sub,delta:1});if(r)ch.push({...r,reason:'关起门来练了几天'});label='练功 · '+sub}
+  if(kind==='走动'){const r=applyChange({target:sub,delta:2});if(r)ch.push({...r,reason:'一起说了好些话'});label='走动 · '+((PEOPLE[sub]||{full:sub}).full)}
+  if(kind==='打听'){S.restNext='打听';note='茶馆、渡口、说书场，你都去坐了坐。下一幕开头会听到一条传闻。'}
+  const t={rest:true,act:S.act,label,changes:ch,note};S.turns.push(t);S.rest=false;
+  $('#opts')&&$('#opts').remove();$('#story').appendChild(turnEl(t));renderSide();
+  if(S.act>=TRIAL_LAST_ACT){S.trialEnd=true;if(!demo)store.set(SAVE_KEY,S);renderOptions();showTrialEnd();return}
+  if(!demo)store.set(SAVE_KEY,S);
+  ask({type:'next_act',rest:label});
+}
+function choose(o){
+  if(busy)return;let check;
+  if(o.special==='青萍一线'&&S.uses['青萍一线']>0){S.uses['青萍一线']--;check={attr:'武力',value:getVal('武力'),need:'—',tier:'大成功',src:'青萍一线'}}
+  else{const c=o.check,base=getVal(c.attr),bonus=Number(c.bonus)||0,need=Number(c.need)||7;check={attr:c.attr,value:base,bonus,src:c.bonus_source||'',need,tier:tierOf(base+bonus-need)}}
+  check.res=settle(o,check.tier);
+  S.options=[];renderOptions();renderSide();
+  ask({type:'choice',choice:`${o.key}. ${o.text}`,check});
+}
+function stateForAI(){return{名字:S.name,性别:S.gender,门派:S.sect,出身:S.origin,天赋:S.talents,属性:{...S.attrs,健康上限:S.hpMax,侠气:S.xia,暴露:S.expo},好感:S.favor,敌意:S.enemy,标记:S.flags,物品:S.items,线索:S.clues,玩家对人物的认识:S.rel,当前幕:S.act,当前节点:S.node,绝招剩余:S.uses}}
+function actProgress(input){
+  if(input.type==='start')return '第一幕第 1 回合（每幕至少 8 回合、最多 12 回合）';
+  if(input.type==='next_act')return `第${S.act}幕已结束。本回合开始第${S.act+1}幕，是新一幕的第 1 回合（每幕至少 8 回合、最多 12 回合）`;
+  const n=actCount(S.act)+1;
+  let s=`第${S.act}幕第 ${n} 回合（每幕至少 8 回合、最多 12 回合）`;
+  if(n<8)s+=`。还不到 8 回合，本回合 act_end 必须为 false`;
+  else if(n>=12)s+=`。已到上限，本回合请推进到本幕最后一个节点并结束本幕`;
+  return s;
+}
+function nodeInfo(){const a=S.act,list=ACT_NODES[a]||[],done=S.nodesDone[a]||[];const next=list.find(n=>!done.includes(n));return{本幕节点顺序:list,已完成:done,下一个:next||'本幕节点已全部演完，本回合结束本幕'}}
+function eventInfo(){return{进行中:S.eventNow?{名字:S.eventNow.name,已进行轮数:S.eventNow.rounds}:'无',已用过:S.eventsUsed}}
+function recentTurns(){return S.turns.filter(t=>!t.rest).slice(-5).map(t=>({幕:t.act,节点:t.node||'',玩家选择:t.choice||'（开场）',检定:t.check?`${t.check.attr}·${t.check.tier}`:'无',剧情:(t.story||[]).join(' '),留给玩家的问题:t.prompt||''}))}
 async function ask(input){
   busy=true;const ld=document.createElement('div');ld.className='loading';ld.innerHTML='<span class="ln"></span>江湖风起……';$('#story').appendChild(ld);ld.scrollIntoView({block:'end',behavior:'smooth'});
   let r=null,err='';
-  try{if(demo){await new Promise(z=>setTimeout(z,800));r=JSON.parse(JSON.stringify(DEMO[Math.min(demoIdx++,DEMO.length-1)]))}else r=await callDeepSeek(input)}catch(e){err=e.message||String(e)}
+  try{if(demo){await new Promise(z=>setTimeout(z,700));r=JSON.parse(JSON.stringify(DEMO[Math.min(demoIdx++,DEMO.length-1)]))}else r=await callDeepSeek(input)}catch(e){err=e.message||String(e)}
+  if(!err&&r&&!demo&&(!Array.isArray(r.story)||!r.story.length||(!r.ending&&!r.act_end&&!(Array.isArray(r.options)&&r.options.length))))err='返回的内容不完整';
   ld.remove();busy=false;
-  if(err||!r){const n=document.createElement('div');n.className='notice';n.innerHTML=`没接上：${esc(err||'返回内容无法识别')}<br>可能是 key 不对、余额不足，或浏览器拦截了直连。可以在设置里填中转地址。`;const rb=document.createElement('button');rb.className='btn';rb.style.marginTop='8px';rb.textContent='重试这一步';rb.onclick=()=>{n.remove();ask(input)};n.appendChild(rb);$('#story').appendChild(n);return}
+  if(err||!r){const n=document.createElement('div');n.className='notice';n.innerHTML=`没接上：${esc(err||'返回内容无法识别')}<br>可能是 key 不对、余额不足、网络不稳，或浏览器拦截了直连。`;const rb=document.createElement('button');rb.className='btn';rb.style.marginTop='8px';rb.textContent='重试这一步';rb.onclick=()=>{n.remove();ask(input)};n.appendChild(rb);$('#story').appendChild(n);return}
   applyResponse(r,input);
 }
 async function callDeepSeek(input){
   if(!storyText){const r=await fetch('story/qingping.md');if(!r.ok)throw new Error('剧情文件读取失败');storyText=await r.text()}
-  const user={当前状态:stateForAI(),已发生记录:S.log.slice(-60),最近剧情:S.recent.slice(-3),本次输入:input.type==='start'?'玩家已建好人物，开始第一幕。':{玩家选择:input.choice,检定结果:input.check||'本选项无检定'}};
+  let now;
+  if(input.type==='start')now=`玩家已建好人物（出身：${S.origin}），从第一幕第一个节点「来客」开始。`;
+  else if(input.type==='next_act'){now={说明:`第${S.act}幕已结束，玩家歇脚（${input.rest}）完毕，开始第${S.act+1}幕的第一个节点。`};if(S.restNext==='打听')now['歇脚打听']='玩家歇脚时去打听了：本回合开头先给一条与主线有关的坊间传闻，写进 facts_add'}
+  else{const c=input.check;now={玩家选择:input.choice,检定结果:{属性:c.attr,玩家数值:c.value,加成:c.bonus||0,门槛:c.need,结果:c.tier,网页已结算:(c.res||[]).map(x=>`${x.label} ${x.d>0?'+':''}${x.d}（${x.reason||''}）`)}}}
+  const user={当前状态:stateForAI(),本幕进度:actProgress(input),节点:nodeInfo(),小事件:eventInfo(),主线账本:S.facts.map(f=>`第${f.act}幕：${f.text}`),剧情记录:S.log.slice(-30),最近五轮原文:recentTurns(),本次输入:now};
   const ctl=new AbortController(),tm=setTimeout(()=>ctl.abort(),90000);
   const res=await fetch((cfg.base||'https://api.deepseek.com').replace(/\/$/,'')+'/chat/completions',{method:'POST',signal:ctl.signal,headers:{'Content-Type':'application/json','Authorization':'Bearer '+cfg.key},
-    body:JSON.stringify({model:cfg.model||'deepseek-chat',temperature:0.85,max_tokens:1800,response_format:{type:'json_object'},messages:[{role:'system',content:storyText+'\n\n'+PROTOCOL},{role:'user',content:'请按协议输出 json。\n'+JSON.stringify(user)}]})});
+    body:JSON.stringify({model:cfg.model||'deepseek-chat',temperature:0.8,max_tokens:2600,response_format:{type:'json_object'},messages:[{role:'system',content:storyText+'\n\n'+PROTOCOL},{role:'user',content:'请按协议输出 json。\n'+JSON.stringify(user)}]})});
   clearTimeout(tm);if(!res.ok){const t=await res.text().catch(()=>'');throw new Error(`接口返回 ${res.status} ${t.slice(0,120)}`)}
   const j=await res.json();return parseJSON(j.choices?.[0]?.message?.content||'');
 }
 function parseJSON(t){t=String(t).trim().replace(/^```(?:json)?/i,'').replace(/```$/,'').trim();const a=t.indexOf('{'),b=t.lastIndexOf('}');return JSON.parse(t.slice(a,b+1))}
 function applyResponse(r,input){
   const prevAct=S.act;
-  if(r.scene){if(r.scene.act)S.act=Number(r.scene.act)||S.act;S.node=r.scene.node||S.node;S.time=r.scene.time||S.time;S.place=r.scene.place||S.place}
+  {const lt=lastPlayTurn(),ended=!!(lt&&lt.actEnd),cnt=actCount(S.act);
+    let na=Number(r.scene&&r.scene.act)||S.act;
+    if(input.type==='next_act'||(ended&&input.type!=='start'&&!r.ending))na=Math.min(S.act+1,5);
+    else if(input.type!=='start'){if(na>S.act&&(r.act_end||cnt<7))na=S.act;if(na>S.act+1)na=S.act+1;if(na<S.act)na=S.act}
+    S.act=na}
+  if(r.scene){S.node=r.scene.node||S.node;S.time=r.scene.time||S.time;S.place=r.scene.place||S.place}
   if(r.goal)S.goal=r.goal;
-  const ch=[];(r.changes||[]).forEach(c=>{const x=applyChange(c);if(x)ch.push({...x,reason:c.reason||''})});
+  const fixed=[];(r.changes||[]).forEach(c=>{const x=applyChange(c);if(x)fixed.push({...x,reason:c.reason||c.why||''})});
   if(r.flags&&typeof r.flags==='object')Object.assign(S.flags,r.flags);
   if(r.relations&&typeof r.relations==='object')for(const [k,v] of Object.entries(r.relations))S.rel[normFavor(k)]=String(v);
   (r.items_add||[]).forEach(i=>{if(!S.items.includes(i))S.items.push(i)});(r.items_remove||[]).forEach(i=>{S.items=S.items.filter(x=>x!==i)});(r.clues_add||[]).forEach(i=>{if(!S.clues.includes(i))S.clues.push(i)});
+  (r.facts_add||[]).forEach(f=>{f=String(f||'').trim();if(f&&!S.facts.some(x=>x.text===f))S.facts.push({act:S.act,text:f})});
+  const dn=S.nodesDone[S.act]||(S.nodesDone[S.act]=[]);(r.node_done||[]).forEach(n=>{n=String(n||'').trim();if(n&&!dn.includes(n))dn.push(n)});
+  if(r.event&&r.event.name){const nm=String(r.event.name);if(!S.eventsUsed.includes(nm))S.eventsUsed.push(nm);
+    if(r.event.status==='结束'){S.eventNow=null}else if(S.eventNow&&S.eventNow.name===nm){S.eventNow.rounds++}else S.eventNow={name:nm,rounds:1}}
+  else if(S.eventNow){S.eventNow.rounds++}
+  if(S.eventNow&&S.eventNow.rounds>3)S.eventNow=null;
   if(S.talents.includes('铁骨')&&S.act>prevAct)S.attrs['健康']=clamp(S.attrs['健康']+2,0,S.hpMax);
-  const t={act:S.act,actStart:(input.type==='start'||S.act>prevAct)?S.act:0,choice:input.choice||'',check:input.check||null,story:r.story||[],changes:ch,prompt:r.prompt||'',actSummary:r.act_end?(r.act_summary||''):''};
-  S.turns.push(t);if(S.turns.length>80)S.turns=S.turns.slice(-80);
-  if(r.note){S.log.push(`第${S.act}幕·${S.node}：${r.note}${input.check?`（检定${input.check.tier}）`:''}`);S.chron.push({act:S.act,node:S.node,text:r.note,tier:input.check?input.check.tier:''})}
-  if(r.act_end&&r.act_summary){S.log.push(`【第${S.act}幕总结】${r.act_summary}`);S.actSum[S.act]=r.act_summary}
-  S.recent.push((r.story||[]).join(' '));if(S.recent.length>6)S.recent.shift();
-  S.options=Array.isArray(r.options)?r.options.slice(0,4):[];if(r.ending)S.ended=r.ending;
+  const merged=(input.check&&input.check.res?input.check.res:[]).concat(fixed);
+  const t={act:S.act,node:S.node,actStart:(input.type==='start'||S.act>prevAct)?S.act:0,choice:input.choice||'',check:input.check||null,story:r.story||[],changes:merged,prompt:r.act_end?'':(r.prompt||''),actEnd:!!r.act_end};
+  S.turns.push(t);if(S.turns.length>120)S.turns=S.turns.slice(-120);
+  if(r.note)S.log.push(`第${S.act}幕·${S.node}：${r.note}${input.check?`（检定${input.check.tier}）`:''}`);
+  if(input.type==='next_act')S.restNext='';
+  if(r.ending){S.ended=r.ending;S.options=[];S.rest=false}
+  else if(r.act_end){S.chapters[S.act]=String(r.chapter||'');S.options=[];S.rest=true}
+  else S.options=prepOptions(r.options);
   const el=turnEl(t);$('#story').appendChild(el);
   renderTop();renderSide();renderOptions();if(!demo)store.set(SAVE_KEY,S);
-  if(r.act_end)toast(`第${CN[S.act]||S.act}幕结束，已自动存档`);
+  if(r.act_end)toast(`第${CN[S.act]||S.act}幕结束 · 江湖录添了新的一章`);
   el.scrollIntoView({block:'start',behavior:'smooth'});
 }
 
 /* 江湖录 */
 function renderChron(){
-  const acts=[...new Set(S.chron.map(c=>c.act).concat(Object.keys(S.actSum).map(Number)))].sort((a,b)=>a-b);
-  const head=`<h2 class="pg-title">江湖录</h2><p class="pg-sub">你走过的路。忘了前面发生过什么，就来这里翻一翻。</p>`;
-  if(!acts.length){$('#chron').innerHTML=head+`<div class="empty">还没有记下什么。</div>`;return}
-  $('#chron').innerHTML=head+acts.map(a=>{const items=S.chron.filter(c=>c.act===a);return `<div class="chron-act"><h3><span class="n">第${CN[a]||a}幕</span><span class="t">${esc(ACT_NAMES[a]||'')}</span></h3>${S.actSum[a]?`<div class="chron-sum">${esc(S.actSum[a])}</div>`:''}<ul class="tl">${items.map(c=>`<li><span class="nd">${esc(c.node)}</span>${esc(c.text)}${c.tier?`<span class="tr"> · 检定${esc(c.tier)}</span>`:''}</li>`).join('')}</ul></div>`}).join('');
+  const head=`<h2 class="pg-title">江湖录</h2><p class="pg-sub">只记主线。玩完从头翻，就是你自己的一卷书。</p>${S.goal&&!S.trialEnd?`<div class="goalbox"><span class="gt2">眼下</span>${esc(S.goal)}</div>`:''}`;
+  let body='';
+  for(let a=1;a<=S.act;a++){
+    const ch=S.chapters[a];
+    if(ch){body+=`<div class="chapter"><h3><span class="n">第${CN[a]||a}幕</span><span class="t">${esc(ACT_NAMES[a]||'')}</span></h3>${ch.split(/\n+/).filter(Boolean).map(p=>`<p>${esc(p)}</p>`).join('')}</div>`}
+    else{const fs=S.facts.filter(f=>f.act===a);body+=`<div class="chron-act"><h3><span class="n">第${CN[a]||a}幕</span><span class="t">${esc(ACT_NAMES[a]||'')}</span><span class="tr">· 进行中</span></h3>${fs.length?`<ul class="tl">${fs.map(f=>`<li>${esc(f.text)}</li>`).join('')}</ul>`:'<div class="empty">这一幕才刚开始。</div>'}</div>`}
+  }
+  $('#chron').innerHTML=head+body;
 }
 /* 人物谱 */
 function renderPeople(){
   const names=Object.keys(S.favor).filter(k=>k!=='小满'||S.favor['小满']>0||S.rel['小满']);
   const cards=names.map(k=>{const P=PEOPLE[k]||{full:k,role:'',rel:'',desc:''},v=S.favor[k],[sn,sc]=stage(v);return `<div class="pc"><div class="hd"><span class="nm">${esc(P.full)}</span><span class="stage ${sc}">${sn}</span></div><div class="rl">${esc(P.role)}${P.rel?' · '+esc(P.rel):''}</div>${bar('好感',v,20,'fog')}<p>${esc(S.rel[k]||P.desc)}</p></div>`}).join('');
   const e=S.enemy['司徒厉'],[en,ec]=enemyStage(e),P=PEOPLE['司徒厉'];
-  const enemy=`<div class="pc enemy"><div class="hd"><span class="nm">${P.full}</span><span class="stage ${ec}">${en}</span></div><div class="rl">${P.role}</div>${bar('敌意',e,20,'red')}<p>${esc(S.rel['司徒厉']||P.desc)}</p></div>`;
+  const enemy=(S.rel['司徒厉']||e>0)?`<div class="pc enemy"><div class="hd"><span class="nm">${P.full}</span><span class="stage ${ec}">${en}</span></div><div class="rl">${P.role}</div>${bar('敌意',e,20,'red')}<p>${esc(S.rel['司徒厉']||P.desc)}</p></div>`:'';
   const extra=Object.keys(S.rel).filter(k=>!(k in S.favor)&&k!=='司徒厉').map(k=>`<div class="pc"><div class="hd"><span class="nm">${esc(k)}</span></div><p>${esc(S.rel[k])}</p></div>`).join('');
   $('#people').innerHTML=`<h2 class="pg-title">人物谱</h2><p class="pg-sub">你认识的人，和你所知道的他们。好感 10 以上的人，会在关键时刻拉你一把。</p><div class="people">${cards}${enemy}${extra}</div>`;
 }
@@ -541,13 +688,14 @@ function renderPeople(){
 function bar(label,v,max,cls=''){const p=Math.round(clamp(v/max,0,1)*100);return `<div class="bar ${cls}"><span>${esc(label)}</span><span class="track"><span class="fill" style="width:${p}%"></span></span><span class="v">${v}${max!==20?'/'+max:''}</span></div>`}
 function renderBag(){
   const tal=S.talents.map(t=>{const T=TALENTS.find(x=>x.id===t);return `<div><span class="tag">${esc(t)}</span><div class="tdesc">${esc(T?T.d:'')}</div></div>`}).join('');
+  const O=ORIGINS.find(x=>x.id===S.origin);
   const ex=S.expo>=10?'已经败露':S.expo>=5?'有人起了疑心':'尚无人察觉',xia=S.xia>=7?'随心而行':S.xia<=3?'听从门派':'进退有度';
   const fl=Object.entries(S.flags).filter(([k])=>k!=='名号').map(([k,v])=>`<span class="tag">${esc(k)}${v===true?'':'：'+esc(v)}</span>`).join('');
   $('#bag').innerHTML=`<h2 class="pg-title">行囊</h2><p class="pg-sub">你此刻的全部家当。</p><div class="sheet">
-   <div class="box" style="grid-column:1/-1"><div class="idcard"><div><div class="big">${esc(S.name)}</div><div class="alias">${alias()?'「'+esc(alias())+'」':'尚无名号'}</div></div><div class="note" style="text-align:right">${esc(S.gender)} · ${esc(S.sect)}<br>第${CN[S.act]||S.act}幕 · ${esc(ACT_NAMES[S.act]||'')}</div></div>
+   <div class="box" style="grid-column:1/-1"><div class="idcard"><div><div class="big">${esc(S.name)}</div><div class="alias">${alias()?'「'+esc(alias())+'」':'尚无名号'}</div></div><div class="note" style="text-align:right">${esc(S.gender)} · ${esc(S.sect)} · ${esc(S.origin)}<br>第${CN[S.act]||S.act}幕 · ${esc(ACT_NAMES[S.act]||'')}</div></div>
     <div class="stat4"><div><b>${S.attrs['武力']}</b><span>武力</span></div><div><b>${S.attrs['机敏']}</b><span>机敏</span></div><div><b>${S.attrs['声望']}</b><span>声望</span></div><div><b>${S.attrs['健康']}</b><span>健康 /${S.hpMax}</span></div></div></div>
    <div class="box"><div class="gt">心性</div>${bar('侠气',S.xia,10)}<div class="note">${xia}</div>${bar('暴露',S.expo,10,'red')}<div class="note" style="color:${S.expo>=5?'#e39a8b':''}">${ex}${S.expo<10?`，到 ${S.expo>=5?10:5} 会出事`:''}</div></div>
-   <div class="box"><div class="gt">天赋</div>${tal}${S.uses['青萍一线']?`<span class="tag">绝招 · 青萍一线 × ${S.uses['青萍一线']}</span>`:''}</div>
+   <div class="box"><div class="gt">出身与天赋</div>${O?`<div><span class="tag">${esc(O.id)}</span><div class="tdesc">${esc(O.d)}</div></div>`:''}${tal}${S.uses['青萍一线']?`<span class="tag">绝招 · 青萍一线 × ${S.uses['青萍一线']}</span>`:''}</div>
    <div class="box"><div class="gt">物品</div><div class="tags">${S.items.map(x=>`<span class="tag">${esc(x)}</span>`).join('')||'<span class="note">空空如也</span>'}</div><div class="gt" style="margin-top:14px">线索</div><div class="tags">${S.clues.map(x=>`<span class="tag">${esc(x)}</span>`).join('')||'<span class="note">暂无</span>'}</div></div>
    <div class="box"><div class="gt">记下的事</div><div class="tags">${fl||'<span class="note">暂无</span>'}</div></div>
    <div class="box" style="grid-column:1/-1"><div class="gt">存档</div><div class="actions"><button id="bExport">导出存档码</button><button id="bImport">导入存档码</button><button id="bCfg">设置</button><button id="bReset">重开一局</button></div>${demo?'<div class="note" style="margin-top:8px">演示模式：剧情是固定的，不会存档。</div>':''}</div></div>`;
@@ -555,8 +703,8 @@ function renderBag(){
   $('#bReset').onclick=()=>confirmBox('重开会清掉当前进度，确定吗？',()=>{store.del(SAVE_KEY);S=null;show('cover');refreshCover()});
 }
 function renderSide(){
-  if(!S)return;const f=Object.entries(S.favor).filter(([k])=>k!=='小满'||S.favor['小满']>0).map(([k,v])=>bar(k,v,20,'fog')).join('');
-  $('#side').innerHTML=`<h3>${esc(S.name)}</h3><div class="alias">${alias()?'「'+esc(alias())+'」':''}</div><div class="gt">属性</div>${bar('武力',S.attrs['武力'],20)}${bar('机敏',S.attrs['机敏'],20)}${bar('声望',S.attrs['声望'],20)}${bar('健康',S.attrs['健康'],S.hpMax,S.attrs['健康']<=2?'red':'')}${bar('侠气',S.xia,10)}${bar('暴露',S.expo,10,'red')}<div class="gt">好感</div>${f}<div class="gt">敌意</div>${bar('司徒厉',S.enemy['司徒厉'],20,'red')}`;
+  if(!S)return;const f=Object.entries(S.favor).filter(([k])=>k!=='小满'||S.favor['小满']>0).map(([k,v])=>bar((PEOPLE[k]||{full:k}).full,v,20,'fog')).join('');
+  $('#side').innerHTML=`<h3>${esc(S.name)}</h3><div class="alias">${alias()?'「'+esc(alias())+'」':''}</div><div class="gt">属性</div>${bar('武力',S.attrs['武力'],20)}${bar('机敏',S.attrs['机敏'],20)}${bar('声望',S.attrs['声望'],20)}${bar('健康',S.attrs['健康'],S.hpMax,S.attrs['健康']<=2?'red':'')}${bar('侠气',S.xia,10)}${bar('暴露',S.expo,10,'red')}<div class="gt">好感</div>${f}${S.enemy['司徒厉']>0?`<div class="gt">敌意</div>${bar('司徒厉',S.enemy['司徒厉'],20,'red')}`:''}`;
   if(tab==='bag')renderBag();if(tab==='people')renderPeople();if(tab==='chron')renderChron();
 }
 $('#btnHome').onclick=()=>{show('cover');refreshCover()};
@@ -564,10 +712,12 @@ $('#btnHome').onclick=()=>{show('cover');refreshCover()};
 /* 弹窗 */
 function modal(html){const m=document.createElement('div');m.className='modal';m.innerHTML=`<div class="card">${html}</div>`;m.onclick=e=>{if(e.target===m)m.remove()};$('#modalRoot').appendChild(m);return m}
 function recap(){
-  const last=S.chron.slice(-4),sums=Object.keys(S.actSum).map(Number).sort((a,b)=>a-b),ls=sums.length?S.actSum[sums[sums.length-1]]:'';
-  const m=modal(`<div class="recap"><h2 class="sec-title">前情提要</h2><p class="sec-sub">第${CN[S.act]||S.act}幕 · ${esc(ACT_NAMES[S.act]||'')} · ${esc(S.place||'')}</p>${ls?`<div class="sum">${esc(ls)}</div>`:''}${last.length?`<ul>${last.map(c=>`<li>${esc(c.text)}</li>`).join('')}</ul>`:''}${S.goal?`<p class="note" style="color:var(--teal)">眼下：${esc(S.goal)}</p>`:''}<div class="btn-col" style="margin-top:12px"><button class="btn primary" id="rGo">接着走</button><button class="btn" id="rChron">翻翻江湖录</button></div></div>`);
+  const fs=S.facts.slice(-4),acts=Object.keys(S.chapters).map(Number).sort((a,b)=>a-b),lc=acts.length?S.chapters[acts[acts.length-1]]:'';
+  const first=lc?lc.split(/\n+/).filter(Boolean).slice(-1)[0]:'';
+  const m=modal(`<div class="recap"><h2 class="sec-title">前情提要</h2><p class="sec-sub">第${CN[S.act]||S.act}幕 · ${esc(ACT_NAMES[S.act]||'')} · ${esc(S.place||'')}</p>${first?`<div class="sum">${esc(first)}</div>`:''}${fs.length?`<ul>${fs.map(f=>`<li>${esc(f.text)}</li>`).join('')}</ul>`:''}${S.goal?`<p class="note" style="color:var(--teal)">眼下：${esc(S.goal)}</p>`:''}<div class="btn-col" style="margin-top:12px"><button class="btn primary" id="rGo">接着走</button><button class="btn" id="rChron">翻翻江湖录</button></div></div>`);
   m.querySelector('#rGo').onclick=()=>m.remove();m.querySelector('#rChron').onclick=()=>{m.remove();setTab('chron')};
 }
+function showTrialEnd(){const m=modal(`<div class="ending"><div class="k">试玩</div><h2>第一幕 · 终</h2><div class="txt"><p class="para">第一幕到这里就结束了。江湖录里已经替你写好了这一章。</p><p class="para">哪里别扭、哪里好玩、哪里看不懂，都告诉作者，下一幕会照着改。</p></div><div class="btn-col" style="margin-top:14px"><button class="btn primary" id="teChron">翻看江湖录</button><button class="btn" id="teClose">留在这里看看</button></div></div>`);m.querySelector('#teChron').onclick=()=>{m.remove();setTab('chron')};m.querySelector('#teClose').onclick=()=>m.remove()}
 function openCfg(fromStart){
   const m=modal(`<h2 class="sec-title">DeepSeek Key</h2><p class="sec-sub">完整游戏需要你自己的 DeepSeek Key。它只存在你这台设备的浏览器里，不会发给作者。</p><ol class="steps"><li>浏览器打开 platform.deepseek.com，注册登录</li><li>在「充值」里先充一点钱（按用量计费）</li><li>进入「API keys」，点「创建」，复制那一串 sk- 开头的字</li><li>粘贴到下面，保存</li></ol>
   <div class="field"><label for="cKey">API Key</label><input type="password" id="cKey" placeholder="sk-..." value="${esc(cfg.key)}"></div>
@@ -584,6 +734,7 @@ function toast(t){const d=document.createElement('div');d.className='toast';d.te
 
 refreshCover();renderCreate();show('cover');
 })();
+
 </script>
 
 </body>
