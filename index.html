@@ -288,7 +288,7 @@ textarea{width:100%;min-height:120px;background:rgba(0,0,0,.3);color:var(--text)
   <div class="bgfix" id="gameBg"></div>
   <main>
     <div class="topbar">
-      <div class="tb-row"><div class="chips"><span class="chip act" id="chipAct">第一幕</span><span class="chip" id="chipNode">—</span><span class="chip" id="chipTime">—</span><span class="chip" id="chipPlace">—</span></div><button class="iconbtn" id="btnHome">封面</button></div>
+      <div class="tb-row"><div class="chips"><span class="chip act" id="chipAct">第一幕</span><span class="chip" id="chipRank">无名小卒</span><span class="chip" id="chipNode">—</span><span class="chip" id="chipTime">—</span><span class="chip" id="chipPlace">—</span></div><button class="iconbtn" id="btnHome">封面</button></div>
       <div class="goal" id="goal" hidden></div>
       <nav class="tabs" id="tabsTop"></nav>
     </div>
@@ -407,6 +407,7 @@ function settle(o,tier){
 function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
 function prepOptions(arr){const o=(Array.isArray(arr)?arr:[]).slice(0,4).map(x=>normOption({...x,text:String(x.text||'').replace(/^[A-DＡ-Ｄ][.、．:：\s]+/,'')}));shuffle(o);o.forEach((x,i)=>x.key='ABCD'[i]);return o}
 function lockInfo(o){if(!o.require||!o.require.target)return null;const cur=getVal(o.require.target),min=Number(o.require.min)||0;return cur<min?{t:o.require.target,min,cur}:null}
+const rankOf=()=>{if(!S)return'无名小卒';const v=S.attrs['声望'];if(v>=14)return'名动江湖';if(v>=10||alias())return'一方名号';if(v>=7)return'小有名气';return'无名小卒'};
 const alias=()=>S&&S.flags&&S.flags['名号']?String(S.flags['名号']):'';
 const lastPlayTurn=()=>{for(let i=S.turns.length-1;i>=0;i--)if(!S.turns[i].rest)return S.turns[i];return null};
 const actCount=a=>S.turns.filter(t=>!t.rest&&t.act===a).length;
@@ -435,6 +436,7 @@ const PROTOCOL=`
  "chapter":"",
  "death":null,
  "missed":null,
+ "name_title":null,
  "ending":null
 }
 规则：
@@ -455,8 +457,9 @@ const PROTOCOL=`
 14. 本幕最后一个节点演完的那一轮：act_end 为 true，options 为空数组（网页会接「歇脚」），并写 chapter。
 15. chapter 是江湖录里本幕的一章，写成小说：400～700 字，第二人称「你」，只写主线，不写小事件、不写数值，分 3～6 段（段与段之间用换行），结尾停在本幕玩家明白的那件事上。
 15.1 玩家死了（健康降到 0，或会死的节点检定失败）：death 写成 {"text":"2到4句，写清楚怎么死的"}，options 照常给出这一轮的四个选项也可以为空，网页会让玩家免费复活回到选择前。不要写 ending。
+15.3 玩家一刀成名那一轮：name_title 写成 {"suggest":["三个名号建议"]}，网页会让玩家自己起名号，不要写 flags 的「名号」。之后 flags 里的「名号」就是玩家自己起的，照着叫。
 15.2 第二幕决赛输了或故意把名号让给师姐：missed 写成 "这一刀，你没能成名。名号与你擦肩而过。"，网页会让玩家选择重来或走下去；其余照常写。
-16. 结局时 ending 写成 {"type":"结局"或"中断","title":"主名 · 后缀（照剧本第八部分）","text":"6到12句尾声","turning_point":"中断时写从哪个节点拐弯","keys":["决定结局的关键选择"]}，options 为空数组。
+16. 结局时 ending 写成 {"type":"结局"或"中断","title":"主名 · 后缀（照剧本第八部分）","text":"6到12句尾声","turning_point":"中断时写从哪个节点拐弯","keys":["决定结局的关键选择"],"life":"你的一生，见剧本第八部分"}，options 为空数组。
 17. 输入里的「本幕进度」由网页统计，必须遵守。本幕不足 8 回合时 act_end 必须为 false。节点演完而回合不够时，先从小事件池里挑；池子用完了才可以自己编一件，规矩照剧本第一部分第 2 条，event 的 name 写成「自编：一句话概括」。一个节点可以用两三回合演完，不要一回合跳过一个节点。
 18. 输入里如果有「歇脚打听」，本回合开头先给玩家一条与主线有关的坊间传闻，写进 facts_add。
 19. 输入里的「灰衣人线索数」由网页统计，宫门前机敏救人的选项只在它 ≥2 时才能给出（镖师遗孤和过目不忘两样都有时稳过）。
@@ -550,7 +553,7 @@ function enterGame(resume){
   ask({type:'start'});
 }
 function renderTop(){
-  $('#chipAct').textContent=`第${CN[S.act]||S.act}幕 · ${ACT_NAMES[S.act]||''}`;$('#chipNode').textContent=S.node||'—';$('#chipTime').textContent=S.time||'—';$('#chipPlace').textContent=S.place||'—';
+  $('#chipRank').textContent=rankOf();$('#chipAct').textContent=`第${CN[S.act]||S.act}幕 · ${ACT_NAMES[S.act]||''}`;$('#chipNode').textContent=S.node||'—';$('#chipTime').textContent=S.time||'—';$('#chipPlace').textContent=S.place||'—';
   $('#goal').hidden=!S.goal;$('#goal').textContent=S.goal?'目标 · '+S.goal:'';
   $('#gameBg').style.setProperty('--img',`url(${ACT_IMG[S.act]||ACT_IMG[1]})`);
 }
@@ -625,7 +628,7 @@ function chooseSafe(){
   const check={attr:'保命',value:'—',need:'—',tier:'成功',src:S.talents.includes('踏雪无痕')?'踏雪无痕':'保命',res,safe:true};
   S.options=[];renderOptions();renderSide();ask({type:'choice',choice:'保. 丢下东西，先逃出去',check,safe:true});
 }
-function stateForAI(){return{刚复活:S.revived?'是':'否',名字:S.name,性别:S.gender,门派:S.sect,出身:S.origin,天赋:S.talents,属性:{...S.attrs,健康上限:S.hpMax,暴露:S.expo,银两:S.money},灰衣人线索数:S.clues.filter(c=>/^灰衣人/.test(c)).length,好感:S.favor,敌意:S.enemy,标记:S.flags,物品:S.items,线索:S.clues,玩家对人物的认识:S.rel,当前幕:S.act,当前节点:S.node,绝招剩余:S.uses}}
+function stateForAI(){return{江湖地位:rankOf(),刚复活:S.revived?'是':'否',名字:S.name,性别:S.gender,门派:S.sect,出身:S.origin,天赋:S.talents,属性:{...S.attrs,健康上限:S.hpMax,暴露:S.expo,银两:S.money},灰衣人线索数:S.clues.filter(c=>/^灰衣人/.test(c)).length,好感:S.favor,敌意:S.enemy,标记:S.flags,物品:S.items,线索:S.clues,玩家对人物的认识:S.rel,当前幕:S.act,当前节点:S.node,绝招剩余:S.uses}}
 function actProgress(input){
   if(input.type==='start')return '第一幕第 1 回合（每幕至少 8 回合、最多 12 回合）';
   if(input.type==='next_act')return `第${S.act}幕已结束。本回合开始第${S.act+1}幕，是新一幕的第 1 回合（每幕至少 8 回合、最多 12 回合）`;
@@ -682,6 +685,13 @@ function handleDeath(text,input){
   const m=document.createElement('div');m.className='modal';m.innerHTML=`<div class="card"><div class="ending"><div class="k">江湖路断</div><h2>你死了</h2><div class="txt"><p class="para">${esc(text||'伤势太重，你倒了下去，再没站起来。')}</p></div><p class="note">这是你第 ${d} 次死在这条路上。</p><div class="btn-col" style="margin-top:14px"><button class="btn primary" id="rvGo">免费复活，回到做选择之前</button></div></div></div>`;
   $('#modalRoot').appendChild(m);m.querySelector('#rvGo').onclick=()=>{m.remove();restoreSnap(true,true)};
 }
+function askTitle(sug){
+  const list=(Array.isArray(sug)?sug:[]).slice(0,3).map(String);
+  const m=document.createElement('div');m.className='modal';m.innerHTML=`<div class="card"><div class="ending"><div class="k">一刀成名</div><h2>江湖人该怎么叫你？</h2><p class="note">两到六个字。可以挑一个，也可以自己写。</p><div class="subrow" style="justify-content:center;margin:12px 0">${list.map(x=>`<button data-t="${esc(x)}">${esc(x)}</button>`).join('')}</div><div class="field"><input type="text" id="ttIn" maxlength="6" placeholder="写下你的名号"></div><div class="err" id="ttErr"></div><div class="btn-col"><button class="btn primary" id="ttGo">就叫这个</button></div></div></div>`;
+  $('#modalRoot').appendChild(m);const inp=m.querySelector('#ttIn');
+  m.querySelectorAll('.subrow button').forEach(b=>b.onclick=()=>{inp.value=b.dataset.t});
+  m.querySelector('#ttGo').onclick=()=>{const v=inp.value.trim();if(v.length<2){m.querySelector('#ttErr').textContent='至少两个字。';return}S.flags['名号']=v;S.facts.push({act:S.act,text:'你一刀成名，江湖人从此叫你「'+v+'」'});if(!demo)store.set(SAVE_KEY,S);m.remove();renderSide();renderTop();toast('名号 · '+v)};
+}
 function showMissed(text){
   const m=document.createElement('div');m.className='modal';m.innerHTML=`<div class="card"><div class="ending"><div class="k">名号</div><h2>擦肩而过</h2><div class="txt"><p class="para">${esc(text||'这一刀，你没能成名。名号与你擦肩而过。')}</p></div><div class="btn-col" style="margin-top:14px"><button class="btn primary" id="msBack">回到那一刻重选</button><button class="btn" id="msGo">就这样走下去</button></div></div></div>`;
   $('#modalRoot').appendChild(m);m.querySelector('#msBack').onclick=()=>{m.remove();restoreSnap(true)};m.querySelector('#msGo').onclick=()=>m.remove();
@@ -690,7 +700,7 @@ function applyResponse(r,input){
   if(input.type==='choice'&&lastSnap&&!r.ending&&!input.safe&&(r.death||S.attrs['健康']<=0)){handleDeath(r.death&&r.death.text,input);return}
   if(input.safe&&S.attrs['健康']<=0)S.attrs['健康']=1;
   S.revived=false;
-  const prevAct=S.act;
+  const prevAct=S.act,prevRank=rankOf();
   {const lt=lastPlayTurn(),ended=!!(lt&&lt.actEnd),cnt=actCount(S.act);
     let na=Number(r.scene&&r.scene.act)||S.act;
     if(input.type==='next_act'||(ended&&input.type!=='start'&&!r.ending))na=Math.min(S.act+1,5);
@@ -721,7 +731,9 @@ function applyResponse(r,input){
   const el=turnEl(t);$('#story').appendChild(el);
   renderTop();renderSide();renderOptions();if(!demo)store.set(SAVE_KEY,S);
   if(r.act_end)toast(`第${CN[S.act]||S.act}幕结束 · 江湖录添了新的一章`);
+  if(rankOf()!==prevRank&&!r.ending)toast('江湖地位 · '+rankOf());
   if(r.missed&&input.type==='choice'&&lastSnap)showMissed(r.missed);
+  if(r.name_title&&!r.missed)askTitle(r.name_title.suggest);
   if(r.act_end&&!r.ending&&S.act>=5&&!demo)setTimeout(()=>ask({type:'ending'}),600);
   el.scrollIntoView({block:'start',behavior:'smooth'});
 }
@@ -735,6 +747,7 @@ function renderChron(){
     if(ch){body+=`<div class="chapter"><h3><span class="n">第${CN[a]||a}幕</span><span class="t">${esc(ACT_NAMES[a]||'')}</span></h3>${ch.split(/\n+/).filter(Boolean).map(p=>`<p>${esc(p)}</p>`).join('')}</div>`}
     else{const fs=S.facts.filter(f=>f.act===a);body+=`<div class="chron-act"><h3><span class="n">第${CN[a]||a}幕</span><span class="t">${esc(ACT_NAMES[a]||'')}</span><span class="tr">· 进行中</span></h3>${fs.length?`<ul class="tl">${fs.map(f=>`<li>${esc(f.text)}</li>`).join('')}</ul>`:'<div class="empty">这一幕才刚开始。</div>'}</div>`}
   }
+  if(S.ended&&S.ended.type!=='中断')body+=`<div class="chapter"><h3><span class="n">你的一生</span><span class="t">${esc(S.ended.title||'')}</span></h3>${lifeHtml(S.ended)}</div>`;
   if(S.ended&&S.ended.type!=='中断')body+=`<div class="chapter"><h3><span class="n">全书背景</span><span class="t">你不知道的事</span></h3>${BACKSTORY.map(([h,p])=>`<p style="text-indent:0;margin-top:14px"><b>${esc(h)}</b></p><p>${esc(p)}</p>`).join('')}</div>`;
   else if(!S.ended)body+=`<div class="chron-act"><h3><span class="n">全书背景</span><span class="t">走完结局后解锁</span></h3></div>`;
   if(S.deaths)body+=`<div class="chron-act"><h3><span class="n">生死簿</span><span class="t">死过 ${S.deaths} 次</span></h3><ul class="tl">${(S.deathLog||[]).map(d=>`<li><span class="nd">第${CN[d.act]||d.act}幕·${esc(d.node)}</span>${esc(d.text)}</li>`).join('')}</ul></div>`;
@@ -757,7 +770,7 @@ function renderBag(){
   const ex=S.expo>=10?'已经败露':S.expo>=5?'有人起了疑心':'尚无人察觉';
   const fl=Object.entries(S.flags).filter(([k])=>k!=='名号').map(([k,v])=>`<span class="tag">${esc(k)}${v===true?'':'：'+esc(v)}</span>`).join('');
   $('#bag').innerHTML=`<h2 class="pg-title">行囊</h2><p class="pg-sub">你此刻的全部家当。</p><div class="sheet">
-   <div class="box" style="grid-column:1/-1"><div class="idcard"><div><div class="big">${esc(S.name)}</div><div class="alias">${alias()?'「'+esc(alias())+'」':'尚无名号'}</div></div><div class="note" style="text-align:right">${esc(S.gender)} · ${esc(S.sect)} · ${esc(S.origin)}<br>第${CN[S.act]||S.act}幕 · ${esc(ACT_NAMES[S.act]||'')}</div></div>
+   <div class="box" style="grid-column:1/-1"><div class="idcard"><div><div class="big">${esc(S.name)}</div><div class="alias">${alias()?'「'+esc(alias())+'」':'尚无名号'}</div><div class="note" style="margin-top:4px">江湖地位 · ${rankOf()}</div></div><div class="note" style="text-align:right">${esc(S.gender)} · ${esc(S.sect)} · ${esc(S.origin)}<br>第${CN[S.act]||S.act}幕 · ${esc(ACT_NAMES[S.act]||'')}</div></div>
     <div class="stat4"><div><b>${S.attrs['武力']}</b><span>武力</span></div><div><b>${S.attrs['机敏']}</b><span>机敏</span></div><div><b>${S.attrs['声望']}</b><span>声望</span></div><div><b>${S.attrs['健康']}</b><span>健康 /${S.hpMax}</span></div></div></div>
    <div class="box"><div class="gt">银两与暴露</div><div class="note" style="font-size:15px;color:var(--fog)">银两 ${S.money} 两</div>${bar('暴露',S.expo,10,'red')}<div class="note" style="color:${S.expo>=5?'#e39a8b':''}">${ex}${S.expo<10?`，到 ${S.expo>=5?10:5} 会出事`:''}</div></div>
    <div class="box"><div class="gt">出身与天赋</div>${O?`<div><span class="tag">${esc(O.id)}</span><div class="tdesc">${esc(O.d)}</div></div>`:''}${tal}${S.uses['青萍一线']?`<span class="tag">绝招 · 青萍一线 × ${S.uses['青萍一线']}</span>`:''}</div>
@@ -769,7 +782,7 @@ function renderBag(){
 }
 function renderSide(){
   if(!S)return;const f=Object.entries(S.favor).filter(([k])=>k!=='小满'||S.favor['小满']>0).map(([k,v])=>bar((PEOPLE[k]||{full:k}).full,v,20,'fog')).join('');
-  $('#side').innerHTML=`<h3>${esc(S.name)}</h3><div class="alias">${alias()?'「'+esc(alias())+'」':''}</div><div class="gt">属性</div>${bar('武力',S.attrs['武力'],20)}${bar('机敏',S.attrs['机敏'],20)}${bar('声望',S.attrs['声望'],20)}${bar('健康',S.attrs['健康'],S.hpMax,S.attrs['健康']<=2?'red':'')}${bar('暴露',S.expo,10,'red')}<div class="gt">银两</div><div class="note" style="color:var(--fog)">${S.money} 两</div><div class="gt">好感</div>${f}${S.enemy['司徒厉']>0?`<div class="gt">敌意</div>${bar('司徒厉',S.enemy['司徒厉'],20,'red')}`:''}`;
+  $('#side').innerHTML=`<h3>${esc(S.name)}</h3><div class="alias">${alias()?'「'+esc(alias())+'」':''}</div><div class="note">江湖地位 · ${rankOf()}</div><div class="gt">属性</div>${bar('武力',S.attrs['武力'],20)}${bar('机敏',S.attrs['机敏'],20)}${bar('声望',S.attrs['声望'],20)}${bar('健康',S.attrs['健康'],S.hpMax,S.attrs['健康']<=2?'red':'')}${bar('暴露',S.expo,10,'red')}<div class="gt">银两</div><div class="note" style="color:var(--fog)">${S.money} 两</div><div class="gt">好感</div>${f}${S.enemy['司徒厉']>0?`<div class="gt">敌意</div>${bar('司徒厉',S.enemy['司徒厉'],20,'red')}`:''}`;
   if(tab==='bag')renderBag();if(tab==='people')renderPeople();if(tab==='chron')renderChron();
 }
 $('#btnHome').onclick=()=>{show('cover');refreshCover()};
@@ -794,7 +807,12 @@ function openCfg(fromStart){
 function exportSave(){const code=btoa(unescape(encodeURIComponent(JSON.stringify(S))));const m=modal(`<h2 class="sec-title">存档码</h2><p class="sec-sub">复制保存好。换设备时在「导入存档码」里粘贴。</p><textarea id="eCode" readonly>${code}</textarea><div class="btn-col" style="margin-top:12px"><button class="btn primary" id="eCopy">复制</button><button class="btn" id="eClose">关闭</button></div>`);m.querySelector('#eCopy').onclick=()=>{const ta=m.querySelector('#eCode');(navigator.clipboard?navigator.clipboard.writeText(code):Promise.reject()).then(()=>toast('已复制')).catch(()=>{ta.select();toast('已选中，请手动复制')})};m.querySelector('#eClose').onclick=()=>m.remove()}
 function importSave(){const m=modal(`<h2 class="sec-title">导入存档码</h2><textarea id="iCode" placeholder="粘贴存档码"></textarea><div class="err" id="iErr"></div><div class="btn-col" style="margin-top:8px"><button class="btn primary" id="iGo">导入</button><button class="btn" id="iClose">关闭</button></div>`);m.querySelector('#iGo').onclick=()=>{try{const s=JSON.parse(decodeURIComponent(escape(atob(m.querySelector('#iCode').value.trim()))));if(!s.attrs)throw 0;S=upgrade(s);demo=false;store.set(SAVE_KEY,S);m.remove();enterGame(true)}catch(e){m.querySelector('#iErr').textContent='存档码不对，检查一下有没有复制完整。'}};m.querySelector('#iClose').onclick=()=>m.remove()}
 function confirmBox(msg,ok){const m=modal(`<p>${esc(msg)}</p><div class="btn-col"><button class="btn primary" id="yOk">确定</button><button class="btn" id="yNo">取消</button></div>`);m.querySelector('#yOk').onclick=()=>{m.remove();ok()};m.querySelector('#yNo').onclick=()=>m.remove()}
-function showEnding(e){const keys=(e.keys||[]).map(k=>`<li>${esc(k)}</li>`).join('');const m=modal(`<div class="ending"><div class="k">${e.type==='中断'?'中断结局':'结局'}</div><h2>${esc(e.title||'')}</h2><div class="txt">${String(e.text||'').split(/\n+/).map(p=>`<p class="para">${esc(p)}</p>`).join('')}</div>${e.turning_point?`<p class="note" style="color:var(--gold)">你的江湖，是从「${esc(e.turning_point)}」那一步开始拐弯的。</p>`:''}${keys?`<div class="keys">决定这个结局的关键<ul>${keys}</ul></div>`:''}<div class="btn-col" style="margin-top:14px"><button class="btn primary" id="enNew">再走一遍江湖</button><button class="btn" id="enChron">翻看江湖录</button><button class="btn" id="enClose">留在这里看看</button></div></div>`);m.querySelector('#enNew').onclick=()=>{store.del(SAVE_KEY);m.remove();S=null;openCreate()};m.querySelector('#enChron').onclick=()=>{m.remove();setTab('chron')};m.querySelector('#enClose').onclick=()=>m.remove()}
+function lifeHtml(e){
+  const f=S.flags,rows=[['出身',S.origin],['天赋',S.talents.join('、')],['名号',f['名号']||'没有名号'],['江湖地位',rankOf()],['路遇少年',{'深':'拔刀相救','浅':'引开追兵','无':'没有出手'}[f['交情']]||'—'],['老聂的信',(f['拆信']?'拆过，':'')+({'早到':'早早送到','晚到':'晚了一步','失败':'被人搜去看过'}[f['信']]||'—')],['落雁峡',f['落雁峡']||'—'],['死过',(S.deaths||0)+' 次'],['结局',e.title||'']];
+  return `${e.life?String(e.life).split(/\n+/).map(p=>`<p class="para">${esc(p)}</p>`).join(''):''}<div class="keys" style="margin-top:10px">${rows.map(([k,v])=>`<div style="display:flex;gap:10px"><span style="color:var(--teal);min-width:5em">${esc(k)}</span><span>${esc(v)}</span></div>`).join('')}</div>`;
+}
+function showLife(e){const m=modal(`<div class="ending"><div class="k">你的一生</div><h2>${esc(S.name)}</h2>${lifeHtml(e)}<div class="btn-col" style="margin-top:14px"><button class="btn" id="lfClose">合上</button></div></div>`);m.querySelector('#lfClose').onclick=()=>m.remove()}
+function showEnding(e){const keys=(e.keys||[]).map(k=>`<li>${esc(k)}</li>`).join('');const m=modal(`<div class="ending"><div class="k">${e.type==='中断'?'中断结局':'结局'}</div><h2>${esc(e.title||'')}</h2><div class="txt">${String(e.text||'').split(/\n+/).map(p=>`<p class="para">${esc(p)}</p>`).join('')}</div>${e.turning_point?`<p class="note" style="color:var(--gold)">你的江湖，是从「${esc(e.turning_point)}」那一步开始拐弯的。</p>`:''}${keys?`<div class="keys">决定这个结局的关键<ul>${keys}</ul></div>`:''}<div class="btn-col" style="margin-top:14px">${e.type!=='中断'?'<button class="btn primary" id="enLife">你的一生</button>':''}<button class="btn" id="enNew">再走一遍江湖</button><button class="btn" id="enChron">翻看江湖录</button><button class="btn" id="enClose">留在这里看看</button></div></div>`);const lb=m.querySelector('#enLife');if(lb)lb.onclick=()=>{m.remove();showLife(e)};m.querySelector('#enNew').onclick=()=>{store.del(SAVE_KEY);m.remove();S=null;openCreate()};m.querySelector('#enChron').onclick=()=>{m.remove();setTab('chron')};m.querySelector('#enClose').onclick=()=>m.remove()}
 function toast(t){const d=document.createElement('div');d.className='toast';d.textContent=t;document.body.appendChild(d);setTimeout(()=>d.remove(),2200)}
 
 refreshCover();renderCreate();show('cover');
